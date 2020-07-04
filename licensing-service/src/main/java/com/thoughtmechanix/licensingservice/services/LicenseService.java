@@ -9,6 +9,7 @@ import com.thoughtmechanix.licensingservice.config.ServiceConfig;
 import com.thoughtmechanix.licensingservice.model.License;
 import com.thoughtmechanix.licensingservice.model.Organization;
 import com.thoughtmechanix.licensingservice.repository.LicenseRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import java.util.Random;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class LicenseService {
     @Autowired
     private LicenseRepository licenseRepository;
@@ -83,7 +85,20 @@ public class LicenseService {
                             value ="12000"
                     )
             },*/
-            fallbackMethod = "buildFallbackLicenseList"
+            fallbackMethod = "buildFallbackLicenseList",
+            threadPoolKey = "licenseByOrgThreadPool",
+            threadPoolProperties = {
+                    @HystrixProperty(name="coreSize", value="30"),
+                    @HystrixProperty(name="maxQueueSize", value="10")
+            },
+            commandProperties = {
+                    @HystrixProperty(name="circuitBreaker.requestVolumeThreshold", value="10"),
+                    @HystrixProperty(name="circuitBreaker.errorThresholdPercentage", value="75"),
+                    @HystrixProperty(name="circuitBreaker.sleepWindowInMilliseconds",value="7000"),
+                    @HystrixProperty(name="metrics.rollingStats.timeInMilliseconds", value="15000"),
+                    @HystrixProperty(name="metrics.rollingStats.numBuckets",value="5")
+            }
+
     )
     public List<License> getLicensesByOrg(String organizationId) {
         randomlyRunLong();// método levará 11 segundos, extrapolando o 1s de tolerância
